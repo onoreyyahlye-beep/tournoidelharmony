@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  POSTPONED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tournament {
+  id          String   @id @default(uuid())
+  name        String   @default("TOURNOI DE L'HARMONY")
+  edition     String   @default("2026")
+  startDate   DateTime
+  endDate     DateTime
+  description String?  @db.Text
+  rules       String?  @db.Text
+  isActive    Boolean  @default(true)
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String   // Ex: Poule A, Poule B
+  teams     Team[]
+  standings Standing[]
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  logoUrl   String?
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  homeMatches Match[]   @relation("HomeTeam")
+  awayMatches Match[]   @relation("AwayTeam")
+  standing    Standing?
+  scorers     Scorer[]
+
+  createdAt DateTime @default(now())
+}
+
+model Standing {
+  id        String @id @default(uuid())
+  teamId    String @unique
+  team      Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  played    Int    @default(0)
+  won       Int    @default(0)
+  drawn     Int    @default(0)
+  lost      Int    @default(0)
+  goalsFor  Int    @default(0)
+  goalsAgainst Int @default(0)
+  goalDiff  Int    @default(0)
+  points    Int    @default(0)
+}
+
+model Match {
+  id          String      @id @default(uuid())
+  matchday    Int         // Journée 1, 2...
+  date        DateTime
+  location    String      // Terrain 1, Terrain Synthétique...
+  status      MatchStatus @default(SCHEDULED)
+  
+  homeTeamId  String
+  homeTeam    Team        @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  
+  awayTeamId  String
+  awayTeam    Team        @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  
+  homeScore   Int?
+  awayScore   Int?
+  
+  goals       Goal[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Scorer {
+  id        String   @id @default(uuid())
+  name      String
+  photoUrl  String?
+  goalsCount Int     @default(0)
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  goals     Goal[]
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  scorerId  String
+  scorer    Scorer   @relation(fields: [scorerId], references: [id], onDelete: Cascade)
+  minute    Int?
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  imageUrl  String?
+  author    String   @default("Organisation")
+  createdAt DateTime @default(now())
+}
+
+model Gallery {
+  id        String   @id @default(uuid())
+  title     String?
+  imageUrl  String
+  createdAt DateTime @default(now())
+}
